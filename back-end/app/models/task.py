@@ -3,7 +3,7 @@ from typing import List, Optional
 from enum import Enum
 from beanie import Document
 from pydantic import BaseModel, Field
-from pydantic.types import ObjectId
+from beanie import PydanticObjectId
 
 
 class PriorityLevel(str, Enum):
@@ -29,14 +29,14 @@ class Task(Document):
     
     # Required fields
     title: str = Field(..., min_length=1, max_length=200, description="Task title")
-    user_id: ObjectId = Field(..., description="ID of the user who owns this task")
+    user_id: PydanticObjectId = Field(..., description="ID of the user who owns this task")
     priority: PriorityLevel = Field(..., description="Task priority level")
     deadline: datetime = Field(..., description="Task deadline (date and time)")
     
     # Optional fields
     description: Optional[str] = Field(None, max_length=1000, description="Detailed task description")
     status: TaskStatus = Field(TaskStatus.TODO, description="Current task status")
-    label_ids: List[ObjectId] = Field(default_factory=list, description="List of label IDs assigned to this task")
+    label_ids: List[PydanticObjectId] = Field(default_factory=list, description="List of label IDs assigned to this task")
     
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Task creation timestamp")
@@ -57,7 +57,7 @@ class Task(Document):
     class Config:
         json_encoders = {
             datetime: lambda v: v.isoformat(),
-            ObjectId: str
+            PydanticObjectId: str
         }
     
     def __str__(self) -> str:

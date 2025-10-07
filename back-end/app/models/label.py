@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 from beanie import Document
 from pydantic import BaseModel, Field
-from pydantic.types import ObjectId
+from beanie import PydanticObjectId
 
 
 class Label(Document):
@@ -13,7 +13,7 @@ class Label(Document):
     
     # Required fields
     name: str = Field(..., min_length=1, max_length=50, description="Label name (e.g., 'Work', 'Personal', 'Urgent')")
-    user_id: ObjectId = Field(..., description="ID of the user who created this label")
+    user_id: PydanticObjectId = Field(..., description="ID of the user who created this label")
     
     # Optional fields
     color: Optional[str] = Field(None, max_length=7, description="Hex color code for UI display (e.g., '#FF5733')")
@@ -32,7 +32,7 @@ class Label(Document):
     class Config:
         json_encoders = {
             datetime: lambda v: v.isoformat(),
-            ObjectId: str
+            PydanticObjectId: str
         }
     
     def __str__(self) -> str:

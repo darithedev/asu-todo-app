@@ -1,6 +1,6 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 from beanie import init_beanie
-from ..config import settings
+from config import settings
 
 # Import all document models
 from .models.user import User
