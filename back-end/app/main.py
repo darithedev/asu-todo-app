@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from .database import init_db, close_db
+from .routes import users, tasks, labels
 
 
 @asynccontextmanager
@@ -22,6 +23,11 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+# Include routers
+app.include_router(users.router)
+app.include_router(tasks.router)
+app.include_router(labels.router)
 
 
 @app.get(
