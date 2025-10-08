@@ -8,15 +8,43 @@ router = APIRouter(prefix="/tasks", tags=["Tasks"])
 @router.get("/", response_model=List[TaskResponse])
 async def get_all_tasks():
     """Get all tasks"""
-    tasks = await Task.find_all().to_list()
-    return tasks
+    try:
+        tasks = await Task.find_all().to_list()
+        # Convert to response format manually
+        return [TaskResponse(
+            id=str(task.id),
+            title=task.title,
+            description=task.description,
+            priority=task.priority,
+            deadline=task.deadline,
+            status=task.status,
+            label_ids=[str(label_id) for label_id in task.label_ids],
+            user_id=str(task.user_id),
+            created_at=task.created_at,
+            updated_at=task.updated_at,
+            completed_at=task.completed_at
+        ) for task in tasks]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @router.get("/user/{user_id}", response_model=List[TaskResponse])
 async def get_user_tasks(user_id: str):
     """Get all tasks for a specific user"""
     try:
         tasks = await Task.find(Task.user_id == PydanticObjectId(user_id)).to_list()
-        return tasks
+        return [TaskResponse(
+            id=str(task.id),
+            title=task.title,
+            description=task.description,
+            priority=task.priority,
+            deadline=task.deadline,
+            status=task.status,
+            label_ids=[str(label_id) for label_id in task.label_ids],
+            user_id=str(task.user_id),
+            created_at=task.created_at,
+            updated_at=task.updated_at,
+            completed_at=task.completed_at
+        ) for task in tasks]
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid user ID: {str(e)}")
 

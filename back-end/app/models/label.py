@@ -68,6 +68,9 @@ class LabelResponse(BaseModel):
     
     class Config:
         from_attributes = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
 
 
 class LabelWithTaskCount(LabelResponse):
