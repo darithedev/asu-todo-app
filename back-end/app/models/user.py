@@ -22,6 +22,7 @@ class User(Document):
     phone_number: Optional[PhoneNumber] = Field(None, description="User's phone number")
     is_active: bool = Field(True, description="Whether the user account is active")
     is_verified: bool = Field(False, description="Whether the user's email is verified")
+    is_admin: bool = Field(False, description="Whether the user has administrator privileges")
     
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Account creation timestamp")
