@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from .database import init_db, close_db
-from .routes import users, tasks, labels
+from .routes import users, tasks, labels, auth
 
 
 @asynccontextmanager
@@ -25,6 +25,7 @@ app = FastAPI(
 )
 
 # Include routers
+app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(tasks.router)
 app.include_router(labels.router)
