@@ -23,6 +23,8 @@ class User(Document):
     is_active: bool = Field(True, description="Whether the user account is active")
     is_verified: bool = Field(False, description="Whether the user's email is verified")
     is_admin: bool = Field(False, description="Whether the user has administrator privileges")
+    refresh_token: Optional[str] = Field(None, description="Current refresh token for long-term sessions")
+    refresh_token_expires: Optional[datetime] = Field(None, description="Expiration timestamp of the refresh token")
     
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Account creation timestamp")

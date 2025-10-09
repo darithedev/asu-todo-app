@@ -1,13 +1,23 @@
 from datetime import datetime, timedelta
 from typing import Optional
+import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 import os
+from pydantic import BaseModel
 
 from ..models.user import User, UserCreate, UserResponse
+
+
+class TokenResponse(BaseModel):
+    """Response model for token endpoints"""
+    access_token: str
+    refresh_token: str
+    token_type: str
+    user: UserResponse
 
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -16,6 +26,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
+REFRESH_TOKEN_EXPIRE_DAYS = 30  # 30 days for refresh token
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -98,7 +109,12 @@ async def register_user(user_data: UserCreate):
     )
 
 
-@router.post("/login")
+def generate_refresh_token() -> str:
+    """Generate a secure random refresh token"""
+    return secrets.token_urlsafe(32)
+
+
+@router.post("/login", response_model=TokenResponse)
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     user = await User.find_one(User.username == form_data.username)
     if not user or not verify_password(form_data.password, user.hashed_password):
@@ -108,18 +124,24 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # Generate access token
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
 
+    # Generate and store refresh token
+    refresh_token = generate_refresh_token()
+    user.refresh_token = refresh_token
+    user.refresh_token_expires = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     user.last_login = datetime.utcnow()
     await user.save()
 
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": UserResponse(
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+        user=UserResponse(
             id=str(user.id),
             email=user.email,
             username=user.username,
@@ -132,7 +154,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
             updated_at=user.updated_at,
             last_login=user.last_login,
         ),
-    }
+    )
 
 
 @router.get("/me", response_model=UserResponse)
@@ -152,8 +174,65 @@ async def read_users_me(current_user: User = Depends(get_current_user)):
     )
 
 
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh_token(refresh_token: str):
+    """Get a new access token using a refresh token"""
+    try:
+        # Find user with this refresh token
+        user = await User.find_one(
+            User.refresh_token == refresh_token,
+            User.refresh_token_expires > datetime.utcnow()
+        )
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired refresh token"
+            )
+
+        # Generate new access token
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user.username},
+            expires_delta=access_token_expires
+        )
+
+        # Generate new refresh token (rotation)
+        new_refresh_token = generate_refresh_token()
+        user.refresh_token = new_refresh_token
+        user.refresh_token_expires = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+        await user.save()
+
+        return TokenResponse(
+            access_token=access_token,
+            refresh_token=new_refresh_token,
+            token_type="bearer",
+            user=UserResponse(
+                id=str(user.id),
+                email=user.email,
+                username=user.username,
+                first_name=user.first_name,
+                last_name=user.last_name,
+                phone_number=str(user.phone_number) if user.phone_number else None,
+                is_active=user.is_active,
+                is_verified=user.is_verified,
+                created_at=user.created_at,
+                updated_at=user.updated_at,
+                last_login=user.last_login,
+            ),
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not refresh token"
+        )
+
+
 @router.post("/logout")
-async def logout():
+async def logout(current_user: User = Depends(get_current_user)):
+    """Logout user by invalidating their refresh token"""
+    current_user.refresh_token = None
+    current_user.refresh_token_expires = None
+    await current_user.save()
     return {"message": "Successfully logged out"}
 
 
