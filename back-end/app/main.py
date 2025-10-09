@@ -1,7 +1,9 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from .database import init_db, close_db
 from .routes import users, tasks, labels, auth
+from config import settings
 
 
 @asynccontextmanager
@@ -18,10 +20,19 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Todo App API",
+    title=settings.APP_NAME,
     description="A comprehensive Todo application with user authentication, tasks, and labels",
-    version="1.0.0",
+    version=settings.APP_VERSION,
     lifespan=lifespan
+)
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.get_cors_origins(),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Include routers
