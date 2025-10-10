@@ -99,7 +99,7 @@ async def create_task(
             user_id=current_user.id,
             priority=task_data.priority,
             deadline=task_data.deadline,
-            status=task_data.status or TaskStatus.TODO,
+            status=TaskStatus.TODO,
             label_ids=[PydanticObjectId(x) for x in (task_data.label_ids or [])]
         )
         await task.insert()
