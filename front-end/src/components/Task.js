@@ -1,9 +1,38 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PRIORITY_COLORS, PRIORITY_LABELS } from '../constants/taskPriorities';
+import { labelService } from '../services/labels';
+
+// Helper function to determine if a color is light
+function isLightColor(color) {
+  if (!color) return false;
+  const hex = color.replace('#', '');
+  const r = parseInt(hex.substr(0, 2), 16);
+  const g = parseInt(hex.substr(2, 2), 16);
+  const b = parseInt(hex.substr(4, 2), 16);
+  const brightness = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+  return brightness > 155;
+}
 import TaskForm from './TaskForm';
 
 export default function Task({ task, onUpdate, onDelete, onToggleComplete }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [labels, setLabels] = useState([]);
+  const [isLoadingLabels, setIsLoadingLabels] = useState(true);
+
+  useEffect(() => {
+    const loadLabels = async () => {
+      try {
+        const allLabels = await labelService.getAllLabels();
+        const taskLabels = allLabels.filter(label => task.label_ids?.includes(label.id));
+        setLabels(taskLabels);
+      } catch (error) {
+        console.error('Error loading labels:', error);
+      } finally {
+        setIsLoadingLabels(false);
+      }
+    };
+    loadLabels();
+  }, [task.label_ids]);
 
   const handleUpdate = (formData) => {
     onUpdate(task.id, formData);
@@ -51,11 +80,25 @@ export default function Task({ task, onUpdate, onDelete, onToggleComplete }) {
             )}
           </div>
         </div>
-        <div className="flex items-center space-x-4">
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${PRIORITY_COLORS[task.priority]}`}>
-            {PRIORITY_LABELS[task.priority]}
-          </span>
-          <span className="text-sm text-gray-500">
+        <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${PRIORITY_COLORS[task.priority]}`}>
+              {PRIORITY_LABELS[task.priority]}
+            </span>
+            {!isLoadingLabels && labels.map(label => (
+              <span
+                key={label.id}
+                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                style={{
+                  backgroundColor: label.color || '#3B82F6',
+                  color: isLightColor(label.color) ? '#1F2937' : '#FFFFFF'
+                }}
+              >
+                {label.name}
+              </span>
+            ))}
+          </div>
+          <span className="text-sm text-gray-500 whitespace-nowrap">
             Due {formatDate(task.deadline)}
           </span>
         </div>
