@@ -1,24 +1,19 @@
-import Head from 'next/head'
+import { useEffect } from 'react';
+import { useRouter } from 'next/router';
+import { useAuth } from '../context/AuthContext';
 
 export default function Home() {
-  return (
-    <>
-      <Head>
-        <title>ASU Todo App</title>
-        <meta name="description" content="A simple todo app for managing your tasks" />
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
+  const router = useRouter();
+  const { isAuthenticated } = useAuth();
 
-      <main className="min-h-screen bg-gray-50">
-        <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-          <div className="px-4 py-6 sm:px-0">
-            <h1 className="text-4xl font-bold text-gray-900">Welcome to ASU Todo App</h1>
-            <p className="mt-4 text-lg text-gray-500">
-              Get started by logging in or creating a new account.
-            </p>
-          </div>
-        </div>
-      </main>
-    </>
-  )
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace('/tasks');
+    } else {
+      router.replace('/login');
+    }
+  }, [isAuthenticated, router]);
+
+  // Return null since this is just a redirect page
+  return null;
 }
