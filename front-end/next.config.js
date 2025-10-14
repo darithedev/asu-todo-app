@@ -8,6 +8,9 @@ const nextConfig = {
   env: {
     API_URL: process.env.API_URL || 'http://localhost:8000',
   },
+  experimental: {
+    appDir: false,
+  }
 }
 
 module.exports = nextConfig
