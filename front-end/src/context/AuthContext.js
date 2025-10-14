@@ -17,18 +17,30 @@ export function AuthProvider({ children }) {
   const router = useRouter();
 
   useEffect(() => {
-    // Check if user is logged in
-    const token = authService.getToken();
-    if (token) {
-      setUser({ token }); // You might want to decode the token or fetch user data here
-    }
-    setLoading(false);
+    const initializeAuth = async () => {
+      // Check if user is logged in
+      const token = authService.getToken();
+      if (token) {
+        try {
+          // Fetch user data
+          const userData = await authService.getCurrentUser();
+          setUser({ token, ...userData });
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+          authService.logout();
+          setUser(null);
+        }
+      }
+      setLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
   const login = async (email, password) => {
     try {
       const data = await authService.login(email, password);
-      setUser({ token: data.access_token });
+      setUser({ token: data.access_token, ...data.user });
       router.push('/tasks');
       return data;
     } catch (error) {
@@ -39,7 +51,7 @@ export function AuthProvider({ children }) {
   const register = async (userData) => {
     try {
       const data = await authService.register(userData);
-      setUser({ token: data.access_token });
+      setUser({ token: data.access_token, ...data });
       router.push('/tasks');
       return data;
     } catch (error) {
