@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
+import { useAuth } from '../context/AuthContext'
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
   const router = useRouter()
-  const isLoggedIn = false // TODO: Replace with actual auth state
+  const { isAuthenticated: isLoggedIn, logout } = useAuth()
 
   return (
     <nav className="bg-white shadow">
@@ -32,8 +33,18 @@ export default function Navbar() {
                 >
                   My Tasks
                 </Link>
+                <Link
+                  href="/labels"
+                  className={`ml-4 px-3 py-2 rounded-md text-sm font-medium ${
+                    router.pathname === '/labels'
+                      ? 'text-primary-700 bg-primary-50'
+                      : 'text-gray-700 hover:text-primary-700 hover:bg-primary-50'
+                  }`}
+                >
+                  Labels
+                </Link>
                 <button
-                  onClick={() => {/* TODO: Implement logout */}}
+                  onClick={logout}
                   className="ml-4 px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-primary-700 hover:bg-primary-50"
                 >
                   Logout
@@ -121,8 +132,18 @@ export default function Navbar() {
               >
                 My Tasks
               </Link>
+              <Link
+                href="/labels"
+                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                  router.pathname === '/labels'
+                    ? 'text-primary-700 bg-primary-50'
+                    : 'text-gray-700 hover:text-primary-700 hover:bg-primary-50'
+                }`}
+              >
+                Labels
+              </Link>
               <button
-                onClick={() => {/* TODO: Implement logout */}}
+                onClick={logout}
                 className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-primary-700 hover:bg-primary-50"
               >
                 Logout

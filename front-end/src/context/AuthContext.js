@@ -12,6 +12,8 @@ const AuthContext = createContext({
 });
 
 export function AuthProvider({ children }) {
+  // Support both render props and regular children
+  const isRenderProp = typeof children === 'function';
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -76,7 +78,14 @@ export function AuthProvider({ children }) {
         loading,
       }}
     >
-      {children}
+      {isRenderProp ? children({
+        user,
+        isAuthenticated: !!user,
+        login,
+        register,
+        logout,
+        loading,
+      }) : children}
     </AuthContext.Provider>
   );
 }

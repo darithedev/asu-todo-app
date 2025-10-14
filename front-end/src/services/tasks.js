@@ -28,7 +28,13 @@ export const taskService = {
 
   async updateTask(taskId, taskData) {
     try {
-      const response = await api.put(`/tasks/${taskId}`, taskData);
+      // If only updating labels, use the labels endpoint
+      if (Object.keys(taskData).length === 1 && taskData.label_ids) {
+        const response = await api.put(`/tasks/${taskId}/labels`, { label_ids: taskData.label_ids });
+        return response.data;
+      }
+      // Otherwise use the regular update endpoint
+      const response = await api.patch(`/tasks/${taskId}`, taskData);
       return response.data;
     } catch (error) {
       throw handleError(error);
