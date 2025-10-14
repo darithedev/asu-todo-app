@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuth } from '../context/AuthContext';
+import { labelService } from '../services/labels';
 import { taskService } from '../services/tasks';
 import TaskList from '../components/TaskList';
 import TaskForm from '../components/TaskForm';
@@ -12,6 +13,10 @@ export default function Tasks() {
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  // Label filtering state
+  const [labels, setLabels] = useState([]);
+  const [isLoadingLabels, setIsLoadingLabels] = useState(true);
+  const [selectedLabelIds, setSelectedLabelIds] = useState([]);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -42,6 +47,23 @@ export default function Tasks() {
       setIsLoading(false);
     }
   };
+
+  // Load available labels for filtering
+  useEffect(() => {
+    const loadLabels = async () => {
+      if (!isAuthenticated) return;
+      try {
+        setIsLoadingLabels(true);
+        const data = await labelService.getAllLabels();
+        setLabels(data);
+      } catch (e) {
+        console.error('Failed to load labels', e);
+      } finally {
+        setIsLoadingLabels(false);
+      }
+    };
+    loadLabels();
+  }, [isAuthenticated]);
 
   // Reload tasks when user changes
   useEffect(() => {
@@ -96,6 +118,15 @@ export default function Tasks() {
     }
   };
 
+  // Derived: tasks to display after filtering by labels
+  const displayedTasks = selectedLabelIds.length === 0
+    ? tasks
+    : tasks.filter(t => {
+        const taskLabelIds = t.label_ids || [];
+        // All selected labels must be present on the task
+        return selectedLabelIds.every(id => taskLabelIds.includes(id));
+      });
+
   return (
     <>
       <Head>
@@ -115,6 +146,52 @@ export default function Tasks() {
         {/* Add new task form */}
         <div className="mt-8 mb-6">
           <TaskForm onSubmit={handleCreateTask} />
+        </div>
+
+        {/* Filters */}
+        <div className="mb-6">
+          <div className="bg-white border rounded-md p-4">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Filter by labels</h3>
+            {isLoadingLabels ? (
+              <p className="text-sm text-gray-500">Loading labels...</p>
+            ) : labels.length === 0 ? (
+              <p className="text-sm text-gray-500">No labels available.</p>
+            ) : (
+              <div className="flex flex-wrap gap-3">
+                {labels.map(label => (
+                  <label key={label.id} className="inline-flex items-center">
+                    <input
+                      type="checkbox"
+                      className="form-checkbox h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                      checked={selectedLabelIds.includes(label.id)}
+                      onChange={(e) => {
+                        setSelectedLabelIds(prev => (
+                          e.target.checked
+                            ? [...prev, label.id]
+                            : prev.filter(id => id !== label.id)
+                        ));
+                      }}
+                    />
+                    <span
+                      className="ml-2 text-sm font-medium rounded-full px-2 py-0.5"
+                      style={{ backgroundColor: label.color || '#3B82F6', color: '#fff' }}
+                    >
+                      {label.name}
+                    </span>
+                  </label>
+                ))}
+                {selectedLabelIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLabelIds([])}
+                    className="ml-2 text-sm text-gray-600 hover:text-primary-700 underline"
+                  >
+                    Clear filters
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Error message */}
@@ -141,7 +218,7 @@ export default function Tasks() {
           </div>
         ) : (
           <TaskList
-            tasks={tasks}
+            tasks={displayedTasks}
             onUpdateTask={handleUpdateTask}
             onDeleteTask={handleDeleteTask}
             onToggleComplete={handleToggleComplete}
