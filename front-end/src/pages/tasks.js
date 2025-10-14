@@ -17,6 +17,10 @@ export default function Tasks() {
   const [labels, setLabels] = useState([]);
   const [isLoadingLabels, setIsLoadingLabels] = useState(true);
   const [selectedLabelIds, setSelectedLabelIds] = useState([]);
+  // Quick filters state
+  const [filterUrgent, setFilterUrgent] = useState(false);
+  const [filterDueToday, setFilterDueToday] = useState(false);
+  const [filterDueTomorrow, setFilterDueTomorrow] = useState(false);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -119,13 +123,28 @@ export default function Tasks() {
   };
 
   // Derived: tasks to display after filtering by labels
-  const displayedTasks = selectedLabelIds.length === 0
-    ? tasks
-    : tasks.filter(t => {
-        const taskLabelIds = t.label_ids || [];
-        // All selected labels must be present on the task
-        return selectedLabelIds.every(id => taskLabelIds.includes(id));
-      });
+  const displayedTasks = tasks.filter(t => {
+    // Label filter
+    if (selectedLabelIds.length > 0) {
+      const taskLabelIds = t.label_ids || [];
+      if (!selectedLabelIds.every(id => taskLabelIds.includes(id))) return false;
+    }
+    // Quick filters
+    if (filterUrgent && t.priority !== 'High') return false;
+    if (filterDueToday || filterDueTomorrow) {
+      try {
+        const today = new Date(); today.setHours(0,0,0,0);
+        const deadline = new Date(t.deadline);
+        const dl = new Date(deadline.getFullYear(), deadline.getMonth(), deadline.getDate());
+        const diffDays = Math.round((dl - today) / (1000*60*60*24));
+        if (filterDueToday && diffDays !== 0) return false;
+        if (filterDueTomorrow && diffDays !== 1) return false;
+      } catch {
+        return false;
+      }
+    }
+    return true;
+  });
 
   return (
     <>
@@ -151,7 +170,46 @@ export default function Tasks() {
         {/* Filters */}
         <div className="mb-6">
           <div className="bg-white border rounded-md p-4">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">Filter by labels</h3>
+            <div className="flex items-start justify-between gap-3">
+              <h3 className="text-sm font-semibold text-gray-900">Filters</h3>
+              {(filterUrgent || filterDueToday || filterDueTomorrow || selectedLabelIds.length>0) && (
+                <button
+                  type="button"
+                  className="px-2 py-1 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 text-xs"
+                  onClick={() => { setFilterUrgent(false); setFilterDueToday(false); setFilterDueTomorrow(false); setSelectedLabelIds([]); }}
+                  aria-label="Clear all filters"
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
+            {/* Quick filters */}
+            <div className="mt-3 flex flex-wrap gap-3 text-xs">
+              <button
+                type="button"
+                className={`px-2 py-1 rounded-md ${filterUrgent ? 'bg-red-600 text-white' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
+                onClick={() => setFilterUrgent(v => !v)}
+              >
+                URGENT (High)
+              </button>
+              <button
+                type="button"
+                className={`px-2 py-1 rounded-md ${filterDueToday ? 'bg-yellow-600 text-white' : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'}`}
+                onClick={() => setFilterDueToday(v => !v)}
+              >
+                DUE TODAY
+              </button>
+              <button
+                type="button"
+                className={`px-2 py-1 rounded-md ${filterDueTomorrow ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
+                onClick={() => setFilterDueTomorrow(v => !v)}
+              >
+                DUE TOMORROW
+              </button>
+            </div>
+
+            {/* Label filters */}
+            <h4 className="mt-4 text-xs font-medium text-gray-700">Labels</h4>
             {isLoadingLabels ? (
               <p className="text-sm text-gray-500">Loading labels...</p>
             ) : labels.length === 0 ? (
@@ -180,15 +238,6 @@ export default function Tasks() {
                     </span>
                   </label>
                 ))}
-                {selectedLabelIds.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedLabelIds([])}
-                    className="ml-2 text-sm text-gray-600 hover:text-primary-700 underline"
-                  >
-                    Clear filters
-                  </button>
-                )}
               </div>
             )}
           </div>
