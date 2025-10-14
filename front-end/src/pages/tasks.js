@@ -1,23 +1,39 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
+import { useRouter } from 'next/router';
 import { useAuth } from '../context/AuthContext';
 import { taskService } from '../services/tasks';
 import TaskList from '../components/TaskList';
+import TaskForm from '../components/TaskForm';
 
 export default function Tasks() {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  const router = useRouter();
   const [tasks, setTasks] = useState([]);
-  const [newTaskTitle, setNewTaskTitle] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace('/login');
+    }
+  }, [isAuthenticated, router]);
 
   useEffect(() => {
     loadTasks();
   }, []);
 
   const loadTasks = async () => {
+    if (!user?.id) {
+      console.log('No user ID available:', user);
+      return;
+    }
+    
     try {
-      const data = await taskService.getAllTasks();
+      console.log('Loading tasks for user:', user.id);
+      const data = await taskService.getAllTasks(user.id);
+      console.log('Loaded tasks:', data);
       setTasks(data);
     } catch (err) {
       setError('Failed to load tasks');
@@ -27,14 +43,19 @@ export default function Tasks() {
     }
   };
 
-  const handleCreateTask = async (e) => {
-    e.preventDefault();
-    if (!newTaskTitle.trim()) return;
+  // Reload tasks when user changes
+  useEffect(() => {
+    if (user?.id) {
+      loadTasks();
+    } else {
+      console.log('Waiting for user data...');
+    }
+  }, [user?.id]);
 
+  const handleCreateTask = async (taskData) => {
     try {
-      const newTask = await taskService.createTask({ title: newTaskTitle });
+      const newTask = await taskService.createTask(taskData);
       setTasks([...tasks, newTask]);
-      setNewTaskTitle('');
     } catch (err) {
       setError('Failed to create task');
       console.error('Error creating task:', err);
@@ -56,8 +77,12 @@ export default function Tasks() {
       await taskService.deleteTask(taskId);
       setTasks(tasks.filter(task => task.id !== taskId));
     } catch (err) {
-      setError('Failed to delete task');
+      setError(err.message || 'Failed to delete task');
       console.error('Error deleting task:', err);
+      // Refresh task list if we get a 403 error (task might belong to another user)
+      if (err.response?.status === 403) {
+        loadTasks();
+      }
     }
   };
 
@@ -88,24 +113,9 @@ export default function Tasks() {
         </div>
 
         {/* Add new task form */}
-        <form onSubmit={handleCreateTask} className="mt-8 mb-6">
-          <div className="flex gap-4">
-            <input
-              type="text"
-              value={newTaskTitle}
-              onChange={(e) => setNewTaskTitle(e.target.value)}
-              placeholder="Add a new task..."
-              className="input-field flex-1"
-            />
-            <button
-              type="submit"
-              disabled={!newTaskTitle.trim()}
-              className="btn-primary"
-            >
-              Add Task
-            </button>
-          </div>
-        </form>
+        <div className="mt-8 mb-6">
+          <TaskForm onSubmit={handleCreateTask} />
+        </div>
 
         {/* Error message */}
         {error && (

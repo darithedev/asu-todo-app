@@ -1,6 +1,14 @@
 import api from './api';
 
 export const authService = {
+  async getCurrentUser() {
+    try {
+      const response = await api.get('/auth/me');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
   async login(email, password) {
     try {
       // Create FormData object as the backend expects form data
