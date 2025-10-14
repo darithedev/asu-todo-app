@@ -26,3 +26,4 @@ export default function TaskList({ tasks, onUpdateTask, onDeleteTask, onToggleCo
     </div>
   );
 }
+
